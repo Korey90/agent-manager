@@ -41,3 +41,27 @@ def test_hook_context_passthrough():
     ]
     result = run_hooks(hooks, HookEvent.PRE_RUN, {"input": "hello"})
     assert result["input"] == "HELLO"
+
+
+def test_disabled_hook_skipped():
+    called = []
+    import runtime.hook_runner as hr
+    hr._BUILTINS["disabled_hook"] = lambda ctx: (called.append(1), ctx)[1]
+
+    hooks = [
+        Hook(name="h", event=HookEvent.PRE_RUN, type=HookType.BUILTIN,
+             entrypoint="disabled_hook", enabled=False),
+    ]
+    run_hooks(hooks, HookEvent.PRE_RUN, {})
+    assert called == []
+
+
+def test_hook_context_passthrough():
+    import runtime.hook_runner as hr
+    hr._BUILTINS["upper_hook"] = lambda ctx: {**ctx, "input": ctx.get("input", "").upper()}
+
+    hooks = [
+        Hook(name="u", event=HookEvent.PRE_RUN, type=HookType.BUILTIN, entrypoint="upper_hook"),
+    ]
+    result = run_hooks(hooks, HookEvent.PRE_RUN, {"input": "hello"})
+    assert result["input"] == "HELLO"

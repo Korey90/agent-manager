@@ -8,3 +8,6 @@
 - Git hooks and automation scripts
 - Local development environment (Concurrently)
 - CI/CD support
+
+**Instructions:**
+- project-rules

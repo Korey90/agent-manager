@@ -8,6 +8,6 @@
 - Migration files
 
 **Actions:**
-- Quick syntax check
-- Trigger relevant skill (e.g. Multi-Language Check)
-- Light validation
+1. Quick syntax check
+2. Trigger relevant skill (e.g. Multi-Language Check)
+3. Light validation

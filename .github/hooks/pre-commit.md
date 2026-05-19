@@ -8,5 +8,3 @@
 - Translation check (no missing keys)
 - No hardcoded strings in Polish/English without translation keys
 - Basic security scan (no obvious secrets)
-
-**If any check fails → block commit** with clear message.

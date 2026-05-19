@@ -33,11 +33,17 @@ class Hook(BaseModel):
     id: str = Field(default_factory=_uuid)
     name: str
     description: str = ""
-    event: HookEvent
+    trigger: str = ""               # human-readable trigger description
+    for_files: list[str] = Field(default_factory=list)   # glob patterns
+    checks: list[str] = Field(default_factory=list)
+    actions: list[str] = Field(default_factory=list)
+    on_failure: str = ""            # what to do on failure
+    notes: list[str] = Field(default_factory=list)
+    # Runtime settings
+    event: HookEvent = HookEvent.PRE_RUN
     type: HookType = HookType.PYTHON
-    # python: "module.function", builtin: hook name
     entrypoint: str = ""
-    priority: int = 100          # lower number = runs first
+    priority: int = 100
     enabled: bool = True
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
