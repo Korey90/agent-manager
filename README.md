@@ -1,4 +1,4 @@
-# Agent Manager — v1.0.0
+# Agent Manager — v1.0.1
 
 Desktopowy menedżer agentów AI z graficznym interfejsem (PyQt6).
 
@@ -26,7 +26,7 @@ Wszystko zapisane jako pliki Markdown w `.github/` — czytelne i wersjonowalne,
 | **📋 Instrukcje** | Ogólne zasady i reguły dla agentów |
 | **🗺 Diagram** | Wizualizacja połączeń agent → skill → hook |
 | **✅ Walidacja** | Przegląd problemów jakości (braki pól, martwe referencje) z nawigacją klik→panel |
-| **▶ Uruchom** | Uruchomienie agenta w tle (via litellm) z podglądem wyniku, skill calls i aktywnym modelem |
+| **▶ Uruchom** | Uruchomienie agenta w tle (via litellm) z podglądem wyniku, skill calls, aktywnym modelem, **historią sesji** i **syntezą mowy TTS** |
 | **📤 Eksport** | Generowanie pliku `AGENTS.md` lub reguł `.cursor/rules/*.mdc` |
 | **⚙ Ustawienia** | Język interfejsu, domyślny model, workspace, **zarządzanie kluczami API** (OpenAI / Anthropic / Gemini) |
 
@@ -36,6 +36,8 @@ Wszystko zapisane jako pliki Markdown w `.github/` — czytelne i wersjonowalne,
 - **Klucze API w GUI** — brak potrzeby ręcznej edycji `.env`; klucze są zapisywane w `~/.agent-manager/api_keys.env` i ładowane przy każdym uruchomieniu
 - **Przycisk Zapisz zawsze widoczny** — poza obszarem przewijania, z potwierdzeniem ✔ Zapisano (zielony flash)
 - **Sanitizacja nazw narzędzi** — nazwy skilli ze spacjami lub znakami specjalnymi są automatycznie konwertowane do formatu wymaganego przez OpenAI API (`^[a-zA-Z0-9_-]+$`)
+- **Historia sesji** — każda rozmowa z agentem jest automatycznie zapisywana w `data/sessions/`; pasek boczny pozwala przeglądać i wznawiać poprzednie sesje
+- **TTS (Text-to-Speech)** — każda odpowiedź agenta ma przycisk `▶` do odczytu głosowego przez OpenAI TTS (`tts-1`, głos `alloy`); przycisk sygnalizuje stany: `▶` gotowy, `⏳` ładowanie, `■` odtwarzanie
 
 ---
 
@@ -43,7 +45,9 @@ Wszystko zapisane jako pliki Markdown w `.github/` — czytelne i wersjonowalne,
 
 - Python 3.12+
 - PyQt6 >= 6.7.0
+- pygame >= 2.5.0 (odtwarzanie TTS)
 - Klucz API modelu LLM (OpenAI, Anthropic lub inny obsługiwany przez litellm)
+- Klucz `OPENAI_API_KEY` wymagany do funkcji TTS
 
 ---
 
@@ -95,11 +99,14 @@ Dane agentów, skilli i hooków są odczytywane z (i zapisywane do) katalogu `.g
 
 ```
 agent-manager/
-├── core/               # Modele Pydantic (Agent, Skill, Hook, Instruction, Prompt)
+├── core/               # Modele Pydantic (Agent, Skill, Hook, Instruction, Prompt, Session)
+│   └── session.py      # Model sesji (Session, SessionTurn) — historia rozmów
+├── data/
+│   └── sessions/       # Zapisane sesje rozmów (JSON, auto-tworzone)
 ├── gui/                # Interfejs PyQt6
 │   ├── main_window.py  # Główne okno z zakładkami
 │   ├── panels.py       # Panele CRUD (BasePanel + AgentPanel, SkillPanel, …)
-│   ├── run_panel.py    # Zakładka uruchamiania agenta
+│   ├── run_panel.py    # Zakładka uruchamiania agenta (sesje, TTS)
 │   ├── export_panel.py # Zakładka eksportu (AGENTS.md / Cursor .mdc)
 │   ├── diagram.py      # Wizualizacja grafu
 │   └── state.py        # Globalny stan (workspace, registry)
