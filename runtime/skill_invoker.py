@@ -11,6 +11,8 @@ from core.skill import Skill, SkillType
 
 def invoke_skill(skill: Skill, **kwargs: Any) -> Any:
     """Dispatch a skill call based on its type."""
+    if not skill.entrypoint:
+        return _invoke_guidance(skill, kwargs)
     match skill.type:
         case SkillType.PYTHON:
             return _invoke_python(skill, kwargs)
@@ -20,6 +22,22 @@ def invoke_skill(skill: Skill, **kwargs: Any) -> Any:
             return _invoke_shell(skill, kwargs)
         case _:
             raise ValueError(f"Unknown skill type: {skill.type}")
+
+
+def _invoke_guidance(skill: Skill, kwargs: dict[str, Any]) -> str:
+    """Return skill description and steps as guidance text when no entrypoint is set."""
+    parts: list[str] = []
+    if skill.description:
+        parts.append(f"Skill: {skill.name}\n{skill.description}")
+    if skill.steps:
+        steps = "\n".join(f"{i + 1}. {s}" for i, s in enumerate(skill.steps))
+        parts.append(f"Steps:\n{steps}")
+    if skill.exit_criteria:
+        parts.append(f"Exit criteria: {skill.exit_criteria}")
+    if kwargs:
+        import json
+        parts.append(f"Arguments received: {json.dumps(kwargs, ensure_ascii=False)}")
+    return "\n\n".join(parts) if parts else f"Skill '{skill.name}' executed."
 
 
 def _invoke_python(skill: Skill, kwargs: dict[str, Any]) -> Any:
