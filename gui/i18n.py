@@ -197,9 +197,16 @@ _STRINGS: dict[str, dict[str, str]] = {
         # About
         "about.title": "O programie",
         "about.body": (
-            "<h3>Agent Manager</h3>"
-            "<p>Narzędzie do zarządzania agentami, skillami, hookami "
-            "i instrukcjami w projektach GitHub Copilot.</p>"
+            "<h3>Agent Manager <small style='color:#666'>v{ver}</small></h3>"
+            "<p><b>Jaki problem rozwiązuje?</b><br>"
+            "Zarządzanie agentami AI w projekcie szybko staje się chaotyczne — "
+            "dziesiątki promptów, skilli, hooków i reguł rozrzucone w plikach bez struktury. "
+            "Agent Manager daje graficzny interfejs do definiowania agentów, przypisywania im "
+            "procedur (skille) i automatycznych akcji (hooki), walidacji spójności "
+            "i uruchamiania ich bezpośrednio z poziomu aplikacji — wszystko zapisane "
+            "jako pliki Markdown w <code>.github/</code>, czytelne dla GitHub Copilot.</p>"
+            "<p><b>Obsługiwane modele:</b> OpenAI, Anthropic, Google Gemini "
+            "(i każdy inny obsługiwany przez litellm).</p>"
             "<p><b>Repozytorium:</b> "
             "<a href='https://github.com/Korey90/agent-manager'>"
             "github.com/Korey90/agent-manager</a></p>"
@@ -396,9 +403,16 @@ _STRINGS: dict[str, dict[str, str]] = {
         # About
         "about.title": "About",
         "about.body": (
-            "<h3>Agent Manager</h3>"
-            "<p>A tool for managing agents, skills, hooks "
-            "and instructions in GitHub Copilot projects.</p>"
+            "<h3>Agent Manager <small style='color:#666'>v{ver}</small></h3>"
+            "<p><b>What problem does it solve?</b><br>"
+            "Managing AI agents in a project quickly becomes messy — "
+            "dozens of prompts, skills, hooks and rules scattered in files with no structure. "
+            "Agent Manager provides a graphical interface for defining agents, assigning "
+            "procedures (skills) and automatic actions (hooks) to them, validating consistency "
+            "and running them directly from the app — everything saved as Markdown files "
+            "in <code>.github/</code>, readable by GitHub Copilot.</p>"
+            "<p><b>Supported models:</b> OpenAI, Anthropic, Google Gemini "
+            "(and any other supported by litellm).</p>"
             "<p><b>Repository:</b> "
             "<a href='https://github.com/Korey90/agent-manager'>"
             "github.com/Korey90/agent-manager</a></p>"

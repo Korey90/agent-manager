@@ -16,12 +16,13 @@ from gui.run_panel import RunPanel
 from gui.export_panel import ExportPanel
 from gui.settings_panel import SettingsPanel
 from gui.i18n import tr, lang_signals
+from version import __version__
 
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Agent Manager")
+        self.setWindowTitle(f"Agent Manager {__version__}")
         self.resize(1100, 720)
         self._build_menu()
         self._build_toolbar()
@@ -122,7 +123,7 @@ class MainWindow(QMainWindow):
         from gui.state import get_workspace
         ws = get_workspace()
         self.status_label.setText(f"Workspace: {ws}")
-        self.setWindowTitle(f"Agent Manager — {ws.name}")
+        self.setWindowTitle(f"Agent Manager {__version__} — {ws.name}")
 
     # ── actions ───────────────────────────────────────────────────────────────
 
@@ -187,7 +188,7 @@ class MainWindow(QMainWindow):
         msg = QMessageBox(self)
         msg.setWindowTitle(tr("about.title"))
         msg.setTextFormat(Qt.TextFormat.RichText)
-        msg.setText(tr("about.body"))
+        msg.setText(tr("about.body").format(ver=__version__))
         msg.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg.exec()
 

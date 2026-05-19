@@ -1,8 +1,20 @@
-# Agent Manager
+# Agent Manager — v1.0.0
 
-Desktopowy menedżer agentów AI z graficznym interfejsem (PyQt6). Pozwala definiować, organizować i uruchamiać agentów opartych na modelu LLM — wraz z ich skilłami, hookami, instrukcjami i promptami. Dane są przechowywane jako pliki Markdown w katalogu `.github/` projektu.
+Desktopowy menedżer agentów AI z graficznym interfejsem (PyQt6).
 
----
+## Jaki problem rozwiązuje?
+
+Zarządzanie agentami AI w projekcie szybko staje się chaotyczne — dziesiątki promptów, skilli, hooków i reguł rozrzucone w plikach bez struktury, bez walidacji, bez wizualizacji powiązań.
+
+**Agent Manager** daje graficzny interfejs do:
+- **definiowania agentów** z rolą, modelem LLM i zestawem zasad,
+- **przypisywania im procedur** (skille — kroki, exit criteria, anti-rationalizations),
+- **automatycznych akcji** (hooki wyzwalane zdarzeniami cyklu życia),
+- **walidacji spójności** — wykrywanie martwych referencji, brakujących pól,
+- **uruchamiania agentów** bezpośrednio z aplikacji (via litellm),
+- **eksportu** do `AGENTS.md` lub reguł `.cursor/rules/*.mdc`.
+
+Wszystko zapisane jako pliki Markdown w `.github/` — czytelne i wersjonowalne, w pełni kompatybilne z GitHub Copilot.
 
 ## Funkcje
 
