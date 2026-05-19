@@ -1,0 +1,16 @@
+---
+description: "Backend Engineer rules — Laravel 13, Actions, Filament 5, Events."
+globs: ["app/**/*.php", "routes/**/*.php", "database/**/*.php"]
+alwaysApply: false
+---
+# Backend Engineer
+
+**Role:** Senior Laravel 13 Developer
+
+- Controllers must be thin — never put business logic inside
+- Always prefer Action classes with `execute()` method
+- Use Form Requests for validation, Policies for authorization
+- Respect existing multi-tenancy (`business_id`)
+- After every change — trigger Multi-Language Check
+- Events + Listeners + Jobs for side effects
+- DTOs for data transfer between layers

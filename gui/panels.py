@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 )
 
 from gui.widgets import CodeEditor, ListEditor
+from gui.i18n import tr
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -39,6 +40,14 @@ def _info_banner(text: str, color: str = "#E8F4FD", border: str = "#6CB4E4") -> 
         " border-radius:3px; padding:6px 10px;"
         " color:#333; font-size:11px; margin-bottom:4px;"
     )
+    return lbl
+
+
+def _fl_row(fl: QFormLayout, key: str, widget) -> QLabel:
+    """Add a translated row to a QFormLayout; return the label for retranslation."""
+    lbl = QLabel(tr(key) + ":")
+    lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+    fl.addRow(lbl, widget)
     return lbl
 
 
@@ -101,9 +110,20 @@ class BasePanel(QWidget):
         self._form_layout.setSpacing(8)
 
         self._build_form(self._form_layout)
+        self._form_layout.addStretch()
+
+        scroll.setWidget(form_container)
+
+        # Save button lives OUTSIDE the scroll so it's always visible
+        right = QWidget()
+        rv = QVBoxLayout(right)
+        rv.setContentsMargins(0, 0, 0, 0)
+        rv.setSpacing(0)
+        rv.addWidget(scroll)
 
         save_row = QHBoxLayout()
-        self.btn_save = QPushButton("💾  Zapisz")
+        save_row.setContentsMargins(12, 6, 12, 6)
+        self.btn_save = QPushButton(tr("btn.save"))
         self.btn_save.setFixedHeight(32)
         self.btn_save.setStyleSheet(
             "QPushButton { background:#0063B1; color:white; border-radius:4px; padding:4px 20px; }"
@@ -112,11 +132,9 @@ class BasePanel(QWidget):
         self.btn_save.clicked.connect(self._on_save)
         save_row.addStretch()
         save_row.addWidget(self.btn_save)
-        self._form_layout.addLayout(save_row)
-        self._form_layout.addStretch()
+        rv.addLayout(save_row)
 
-        scroll.setWidget(form_container)
-        splitter.addWidget(scroll)
+        splitter.addWidget(right)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
 
@@ -176,14 +194,14 @@ class BasePanel(QWidget):
 
     def _on_new(self) -> None:
         from PyQt6.QtWidgets import QInputDialog
-        name, ok = QInputDialog.getText(self, f"Nowy {self._ITEM_KIND}", "Nazwa:")
+        name, ok = QInputDialog.getText(self, tr("dlg.new_title", kind=self._ITEM_KIND), tr("dlg.new_label"))
         if not ok or not name.strip():
             return
         store = self._get_store()
         from storage.markdown_utils import to_slug
         slug = to_slug(name.strip())
         if store.get(slug):
-            QMessageBox.warning(self, "Już istnieje", f"{self._ITEM_KIND.title()} '{name}' już istnieje.")
+            QMessageBox.warning(self, tr("dlg.exists"), tr("dlg.exists_msg", kind=self._ITEM_KIND.title(), name=name))
             return
         item = self._new_item(name.strip())
         store.save(item)
@@ -202,7 +220,7 @@ class BasePanel(QWidget):
         if not item:
             return
         reply = QMessageBox.question(
-            self, "Usuń", f"Usunąć '{item.name}'?",
+            self, tr("dlg.delete"), tr("dlg.delete_q", name=item.name),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
@@ -212,7 +230,7 @@ class BasePanel(QWidget):
 
     def _on_save(self) -> None:
         if not self._current_id:
-            QMessageBox.information(self, "Brak wyboru", "Wybierz element z listy.")
+            QMessageBox.information(self, tr("dlg.no_select"), tr("dlg.no_select_m"))
             return
         try:
             store = self._get_store()
@@ -225,6 +243,7 @@ class BasePanel(QWidget):
             item.touch()
             store.save(item)
             self.refresh()
+            self._flash_saved()
         except Exception as exc:
             import traceback
             QMessageBox.critical(self, "Błąd zapisu",
@@ -246,6 +265,27 @@ class BasePanel(QWidget):
         QTimer.singleShot(1400, lambda: self._scroll.setStyleSheet(
             "QScrollArea { border:none; }"
         ))
+
+    def _flash_saved(self) -> None:
+        """Briefly turn the Save button green to confirm a successful save."""
+        original_text = tr("btn.save")
+        self.btn_save.setText(tr("btn.saved"))
+        self.btn_save.setStyleSheet(
+            "QPushButton { background:#107C10; color:white; border-radius:4px; padding:4px 20px; }"
+        )
+        def _restore():
+            self.btn_save.setText(original_text)
+            self.btn_save.setStyleSheet(
+                "QPushButton { background:#0063B1; color:white; border-radius:4px; padding:4px 20px; }"
+                "QPushButton:hover { background:#0078D4; }"
+            )
+        QTimer.singleShot(1500, _restore)
+
+    def retranslate_ui(self) -> None:
+        """Update translatable widget texts after language change."""
+        self.btn_new.setText(tr("btn.new"))
+        self.btn_del.setText(tr("btn.delete"))
+        self.btn_save.setText(tr("btn.save"))
 
 
 # ── Agent Panel ───────────────────────────────────────────────────────────────
@@ -269,12 +309,9 @@ class AgentPanel(BasePanel):
     ]
 
     def _build_form(self, layout: QVBoxLayout) -> None:
-        layout.addWidget(_info_banner(
-            "<b>Agent</b> to samodzielna jednostka AI ze zdefiniowaną rolą, modelem LLM i zestawem skilli. "
-            "Każdy agent jest zapisywany jako plik <code>.github/agents/&lt;id&gt;.md</code>. "
-            "Przypisz skille (checkboxy poniżej), by agent wiedział, z jakich narzędzi korzystać."
-        ))
-        layout.addWidget(_label("Agent"))
+        self._banner_ag = _info_banner(tr("agent.banner"))
+        layout.addWidget(self._banner_ag)
+        layout.addWidget(_label(tr("agent.form_title")))
         layout.addWidget(_sep())
 
         fl = QFormLayout()
@@ -284,45 +321,53 @@ class AgentPanel(BasePanel):
         self.f_desc = QPlainTextEdit(); self.f_desc.setMaximumHeight(60)
         self.f_model = QComboBox(); self.f_model.setEditable(True)
         self.f_model.addItems(self._MODELS)
-        fl.addRow("Nazwa:", self.f_name)
-        fl.addRow("Rola:", self.f_role)
-        fl.addRow("Opis:", self.f_desc)
-        fl.addRow("Model LLM:", self.f_model)
+        self._flr_ag_name  = _fl_row(fl, "agent.name",        self.f_name)
+        self._flr_ag_role  = _fl_row(fl, "agent.role",        self.f_role)
+        self._flr_ag_desc  = _fl_row(fl, "agent.description", self.f_desc)
+        self._flr_ag_model = _fl_row(fl, "agent.model",       self.f_model)
         layout.addLayout(fl)
 
-        layout.addWidget(_label("Specjalizacja"))
-        self.f_spec = ListEditor("Dodaj specjalizację…")
+        self._lbl_ag_spec = _label(tr("agent.specialization"))
+        layout.addWidget(self._lbl_ag_spec)
+        self.f_spec = ListEditor(tr("agent.spec_ph"))
         layout.addWidget(self.f_spec)
 
-        layout.addWidget(_label("Obowiązki"))
-        self.f_resp = ListEditor("Dodaj obowiązek…")
+        self._lbl_ag_resp = _label(tr("agent.responsibilities"))
+        layout.addWidget(self._lbl_ag_resp)
+        self.f_resp = ListEditor(tr("agent.resp_ph"))
         layout.addWidget(self.f_resp)
 
-        layout.addWidget(_label("Twarde zasady (Hard Rules)"))
-        self.f_rules = ListEditor("Dodaj zasadę…")
+        self._lbl_ag_rules = _label(tr("agent.hard_rules"))
+        layout.addWidget(self._lbl_ag_rules)
+        self.f_rules = ListEditor(tr("agent.rules_ph"))
         layout.addWidget(self.f_rules)
 
-        layout.addWidget(_label("Preferowane wzorce"))
-        self.f_patterns = ListEditor("Dodaj wzorzec…")
+        self._lbl_ag_patt = _label(tr("agent.preferred_patterns"))
+        layout.addWidget(self._lbl_ag_patt)
+        self.f_patterns = ListEditor(tr("agent.pat_ph"))
         layout.addWidget(self.f_patterns)
 
-        layout.addWidget(_label("Notatki"))
-        self.f_notes = ListEditor("Dodaj notatkę…")
+        self._lbl_ag_notes = _label(tr("agent.notes"))
+        layout.addWidget(self._lbl_ag_notes)
+        self.f_notes = ListEditor(tr("agent.notes_ph"))
         layout.addWidget(self.f_notes)
 
-        layout.addWidget(_label("Skille agenta"))
+        self._lbl_ag_skills = _label(tr("agent.skills"))
+        layout.addWidget(self._lbl_ag_skills)
         self.f_skills = QListWidget()
         self.f_skills.setMinimumHeight(150)
         self.f_skills.setToolTip("Zaznacz skille używane przez tego agenta")
         layout.addWidget(self.f_skills)
 
-        layout.addWidget(_label("Hooki agenta"))
+        self._lbl_ag_hooks = _label(tr("agent.hooks"))
+        layout.addWidget(self._lbl_ag_hooks)
         self.f_hooks = QListWidget()
         self.f_hooks.setMinimumHeight(120)
         self.f_hooks.setToolTip("Zaznacz hooki przypisane do tego agenta")
         layout.addWidget(self.f_hooks)
 
-        layout.addWidget(_label("Instrukcje agenta"))
+        self._lbl_ag_instr = _label(tr("agent.instructions"))
+        layout.addWidget(self._lbl_ag_instr)
         self.f_instructions = QListWidget()
         self.f_instructions.setMinimumHeight(100)
         self.f_instructions.setToolTip("Zaznacz instrukcje (reguły) przypisane do tego agenta")
@@ -427,6 +472,22 @@ class AgentPanel(BasePanel):
             "instruction_ids": instruction_ids,
         }
 
+    def retranslate_ui(self) -> None:
+        super().retranslate_ui()
+        self._flr_ag_name.setText(tr("agent.name") + ":")
+        self._flr_ag_role.setText(tr("agent.role") + ":")
+        self._flr_ag_desc.setText(tr("agent.description") + ":")
+        self._flr_ag_model.setText(tr("agent.model") + ":")
+        self._lbl_ag_spec.setText(tr("agent.specialization"))
+        self._lbl_ag_resp.setText(tr("agent.responsibilities"))
+        self._lbl_ag_rules.setText(tr("agent.hard_rules"))
+        self._lbl_ag_patt.setText(tr("agent.preferred_patterns"))
+        self._lbl_ag_notes.setText(tr("agent.notes"))
+        self._lbl_ag_skills.setText(tr("agent.skills"))
+        self._lbl_ag_hooks.setText(tr("agent.hooks"))
+        self._lbl_ag_instr.setText(tr("agent.instructions"))
+        self._banner_ag.setText(tr("agent.banner"))
+
 
 # ── Skill Panel ───────────────────────────────────────────────────────────────
 
@@ -443,14 +504,10 @@ class SkillPanel(BasePanel):
         return Skill(id=to_slug(name), name=name)
 
     def _build_form(self, layout: QVBoxLayout) -> None:
-        layout.addWidget(_info_banner(
-            "<b>Skill</b> to workflow kroków z jasnymi <i>exit criteria</i> (wg Agent Skills). "
-            "Dodaj fazę SDLC, kroki (Steps), warunek ukończenia (Exit Criteria), zasady i "
-            "<i>anti-rationalizations</i> — rebuttals do wymówek, które agent może podać żeby pominąć workflow. "
-            "Plik: <code>.github/skills/&lt;id&gt;.md</code>.",
-            color="#EBF5EB", border="#5CB85C"
-        ))
-        layout.addWidget(_label("Skill"))
+        self._banner_sk = _info_banner(tr("skill.banner"), color="#EBF5EB", border="#5CB85C")
+        layout.addWidget(self._banner_sk)
+        self._lbl_sk_title = _label(tr("skill.form_title"))
+        layout.addWidget(self._lbl_sk_title)
         layout.addWidget(_sep())
 
         fl = QFormLayout()
@@ -483,38 +540,32 @@ class SkillPanel(BasePanel):
             "user asks to create a report or export",
         ])
         self.f_when.setCurrentIndex(-1)
-        fl.addRow("Nazwa:", self.f_name)
-        fl.addRow("Opis:", self.f_desc)
-        fl.addRow("Faza SDLC:", self.f_phase)
-        fl.addRow("Kiedy użyć:", self.f_when)
+        self._flr_sk_name  = _fl_row(fl, "skill.name",        self.f_name)
+        self._flr_sk_desc  = _fl_row(fl, "skill.description", self.f_desc)
+        self._flr_sk_phase = _fl_row(fl, "skill.phase",       self.f_phase)
+        self._flr_sk_when  = _fl_row(fl, "skill.when_to_use", self.f_when)
         layout.addLayout(fl)
 
-        layout.addWidget(_label("Kroki (Steps)"))
-        self.f_steps = ListEditor("Dodaj krok…")
+        self._lbl_sk_steps = _label(tr("skill.steps"))
+        layout.addWidget(self._lbl_sk_steps)
+        self.f_steps = ListEditor(tr("skill.steps_ph"))
         layout.addWidget(self.f_steps)
 
-        layout.addWidget(_info_banner(
-            "⬛ <b>Exit criteria</b> — opisz konkretny, weryfikowalny warunek ukończenia zadania. "
-            "Np. <i>\"testy przechodzą, build jest czysty, reviewer zaakceptował\"</i>. "
-            "Bez tego agent nie wie kiedy zadanie jest naprawdę skończone.",
-            color="#F0F9FF", border="#0EA5E9"
-        ))
+        self._banner_sk_exit = _info_banner(tr("skill.banner_exit"), color="#F0F9FF", border="#0EA5E9")
+        layout.addWidget(self._banner_sk_exit)
         self.f_exit = QPlainTextEdit()
         self.f_exit.setMaximumHeight(65)
         self.f_exit.setPlaceholderText("np. All tests pass, build is clean, no linting errors, reviewer approved…")
         layout.addWidget(self.f_exit)
 
-        layout.addWidget(_label("Zasady (Rules)"))
-        self.f_rules = ListEditor("Dodaj zasadę…")
+        self._lbl_sk_rules = _label(tr("skill.rules"))
+        layout.addWidget(self._lbl_sk_rules)
+        self.f_rules = ListEditor(tr("skill.rules_ph"))
         layout.addWidget(self.f_rules)
 
-        layout.addWidget(_info_banner(
-            "🔄 <b>Anti-rationalizations</b> — rebuttals do wymówek agenta. "
-            "Format: <i>wymówka | odpowiedź</i>, np. "
-            "<i>\"This is too simple for a spec | Acceptance criteria still apply.\"</i>",
-            color="#FFF7ED", border="#F97316"
-        ))
-        self.f_anti = ListEditor("Dodaj: wymówka | obalenie…")
+        self._banner_sk_anti = _info_banner(tr("skill.banner_anti"), color="#FFF7ED", border="#F97316")
+        layout.addWidget(self._banner_sk_anti)
+        self.f_anti = ListEditor(tr("skill.anti_ph"))
         layout.addWidget(self.f_anti)
 
         fl2 = QFormLayout()
@@ -533,11 +584,12 @@ class SkillPanel(BasePanel):
             "numbered list", "bullet list", "table",
         ])
         self.f_out.setCurrentIndex(-1)
-        fl2.addRow("Język szablonu:", self.f_lang)
-        fl2.addRow("Format wyjścia:", self.f_out)
+        self._flr_sk_lang = _fl_row(fl2, "skill.lang",          self.f_lang)
+        self._flr_sk_out  = _fl_row(fl2, "skill.output_format", self.f_out)
         layout.addLayout(fl2)
 
-        layout.addWidget(_label("Szablon kodu (Template)"))
+        self._lbl_sk_tmpl = _label(tr("skill.template"))
+        layout.addWidget(self._lbl_sk_tmpl)
         self.f_tmpl = CodeEditor()
         layout.addWidget(self.f_tmpl)
 
@@ -588,6 +640,22 @@ class SkillPanel(BasePanel):
             "template": self.f_tmpl.toPlainText(),
         }
 
+    def retranslate_ui(self) -> None:
+        super().retranslate_ui()
+        self._lbl_sk_title.setText(tr("skill.form_title"))
+        self._flr_sk_name.setText(tr("skill.name") + ":")
+        self._flr_sk_desc.setText(tr("skill.description") + ":")
+        self._flr_sk_phase.setText(tr("skill.phase") + ":")
+        self._flr_sk_when.setText(tr("skill.when_to_use") + ":")
+        self._lbl_sk_steps.setText(tr("skill.steps"))
+        self._lbl_sk_rules.setText(tr("skill.rules"))
+        self._flr_sk_lang.setText(tr("skill.lang") + ":")
+        self._flr_sk_out.setText(tr("skill.output_format") + ":")
+        self._lbl_sk_tmpl.setText(tr("skill.template"))
+        self._banner_sk.setText(tr("skill.banner"))
+        self._banner_sk_exit.setText(tr("skill.banner_exit"))
+        self._banner_sk_anti.setText(tr("skill.banner_anti"))
+
 
 # ── Hook Panel ────────────────────────────────────────────────────────────────
 
@@ -611,14 +679,10 @@ class HookPanel(BasePanel):
     _TYPES  = ["python", "builtin"]
 
     def _build_form(self, layout: QVBoxLayout) -> None:
-        layout.addWidget(_info_banner(
-            "<b>Hook</b> to akcja automatycznie wyzwalana przez zdarzenie w cyklu życia agenta. "
-            "Ustaw <i>wyzwalacz</i> (np. pre-commit, on-save), <i>zdarzenie</i> (pre_run / post_run / on_error) "
-            "i <i>typ</i> (python = skrypt, builtin = wbudowana funkcja). "
-            "Pliki hooków: <code>.github/hooks/&lt;id&gt;.md</code>.",
-            color="#FFF8E1", border="#F0AD4E"
-        ))
-        layout.addWidget(_label("Hook"))
+        self._banner_hk = _info_banner(tr("hook.banner"), color="#FFF8E1", border="#F0AD4E")
+        layout.addWidget(self._banner_hk)
+        self._lbl_hk_title = _label(tr("hook.form_title"))
+        layout.addWidget(self._lbl_hk_title)
         layout.addWidget(_sep())
 
         fl = QFormLayout()
@@ -629,7 +693,7 @@ class HookPanel(BasePanel):
         self.f_trigger = QComboBox(); self.f_trigger.setEditable(True)
         self.f_trigger.addItems(self._TRIGGERS)
         self.f_trigger.setCurrentIndex(-1)
-        self.f_trigger.lineEdit().setPlaceholderText("Wybierz lub wpisz wyzwalacz…")
+        self.f_trigger.lineEdit().setPlaceholderText(tr("hook.trigger_ph"))
 
         self.f_failure = QLineEdit()
 
@@ -640,29 +704,33 @@ class HookPanel(BasePanel):
         self.f_priority = QSpinBox()
         self.f_priority.setRange(0, 9999); self.f_priority.setValue(100)
 
-        fl.addRow("Nazwa:", self.f_name)
-        fl.addRow("Opis:", self.f_desc)
-        fl.addRow("Wyzwalacz:", self.f_trigger)
-        fl.addRow("Przy błędzie:", self.f_failure)
-        fl.addRow("Zdarzenie (event):", self.f_event)
-        fl.addRow("Typ:", self.f_type)
-        fl.addRow("Priorytet:", self.f_priority)
+        self._flr_hk_name     = _fl_row(fl, "hook.name",        self.f_name)
+        self._flr_hk_desc     = _fl_row(fl, "hook.description", self.f_desc)
+        self._flr_hk_trigger  = _fl_row(fl, "hook.trigger",     self.f_trigger)
+        self._flr_hk_failure  = _fl_row(fl, "hook.on_failure",  self.f_failure)
+        self._flr_hk_event    = _fl_row(fl, "hook.event",       self.f_event)
+        self._flr_hk_type     = _fl_row(fl, "hook.type",        self.f_type)
+        self._flr_hk_priority = _fl_row(fl, "hook.priority",    self.f_priority)
         layout.addLayout(fl)
 
-        layout.addWidget(_label("Pliki (For files in)"))
-        self.f_files = ListEditor("Dodaj wzorzec pliku…")
+        self._lbl_hk_files = _label(tr("hook.for_files"))
+        layout.addWidget(self._lbl_hk_files)
+        self.f_files = ListEditor(tr("hook.files_ph"))
         layout.addWidget(self.f_files)
 
-        layout.addWidget(_label("Sprawdzenia (Checks)"))
-        self.f_checks = ListEditor("Dodaj sprawdzenie…")
+        self._lbl_hk_checks = _label(tr("hook.checks"))
+        layout.addWidget(self._lbl_hk_checks)
+        self.f_checks = ListEditor(tr("hook.checks_ph"))
         layout.addWidget(self.f_checks)
 
-        layout.addWidget(_label("Akcje (Actions)"))
-        self.f_actions = ListEditor("Dodaj akcję…")
+        self._lbl_hk_actions = _label(tr("hook.actions"))
+        layout.addWidget(self._lbl_hk_actions)
+        self.f_actions = ListEditor(tr("hook.actions_ph"))
         layout.addWidget(self.f_actions)
 
-        layout.addWidget(_label("Notatki"))
-        self.f_notes = ListEditor("Dodaj notatkę…")
+        self._lbl_hk_notes = _label(tr("hook.notes"))
+        layout.addWidget(self._lbl_hk_notes)
+        self.f_notes = ListEditor(tr("hook.notes_ph"))
         layout.addWidget(self.f_notes)
 
     def _load_form(self, item) -> None:
@@ -698,6 +766,22 @@ class HookPanel(BasePanel):
             "actions": self.f_actions.get_items(),
             "notes": self.f_notes.get_items(),
         }
+
+    def retranslate_ui(self) -> None:
+        super().retranslate_ui()
+        self._lbl_hk_title.setText(tr("hook.form_title"))
+        self._flr_hk_name.setText(tr("hook.name") + ":")
+        self._flr_hk_desc.setText(tr("hook.description") + ":")
+        self._flr_hk_trigger.setText(tr("hook.trigger") + ":")
+        self._flr_hk_failure.setText(tr("hook.on_failure") + ":")
+        self._flr_hk_event.setText(tr("hook.event") + ":")
+        self._flr_hk_type.setText(tr("hook.type") + ":")
+        self._flr_hk_priority.setText(tr("hook.priority") + ":")
+        self._lbl_hk_files.setText(tr("hook.for_files"))
+        self._lbl_hk_checks.setText(tr("hook.checks"))
+        self._lbl_hk_actions.setText(tr("hook.actions"))
+        self._lbl_hk_notes.setText(tr("hook.notes"))
+        self._banner_hk.setText(tr("hook.banner"))
 
 
 # ── Instruction helpers ────────────────────────────────────────────────────────
@@ -776,8 +860,8 @@ class InstructionPanel(BasePanel):
         self.list_widget.currentRowChanged.connect(self._on_select)
         lv.addWidget(self.list_widget)
         btn_row = QHBoxLayout()
-        self.btn_new = QPushButton("＋ Nowy")
-        self.btn_del = QPushButton("✕ Usuń")
+        self.btn_new = QPushButton(tr("btn.new"))
+        self.btn_del = QPushButton(tr("btn.delete"))
         self.btn_new.clicked.connect(self._on_new)
         self.btn_del.clicked.connect(self._on_delete)
         btn_row.addWidget(self.btn_new); btn_row.addWidget(self.btn_del)
@@ -790,7 +874,7 @@ class InstructionPanel(BasePanel):
         rv.setContentsMargins(12, 12, 12, 12); rv.setSpacing(6)
         self._build_form(rv)
         save_row = QHBoxLayout()
-        self.btn_save = QPushButton("💾  Zapisz")
+        self.btn_save = QPushButton(tr("btn.save"))
         self.btn_save.setFixedHeight(32)
         self.btn_save.setStyleSheet(
             "QPushButton { background:#0063B1; color:white;"
@@ -807,14 +891,10 @@ class InstructionPanel(BasePanel):
         root.addWidget(splitter)
 
     def _build_form(self, layout: QVBoxLayout) -> None:
-        layout.addWidget(_info_banner(
-            "<b>Instruction</b> to zestaw reguł i wytycznych dla Copilota — np. konwencje kodowania, "
-            "zakazane wzorce lub kontekst projektu. Pole <i>applyTo</i> (glob) decyduje, "
-            "do jakich plików instrukcja jest dołączana (np. <code>**/*.ts</code> tylko dla TypeScriptu). "
-            "Plik zapisywany w <code>.github/instructions/&lt;id&gt;.md</code> z YAML frontmatter.",
-            color="#F5E6FF", border="#9B59B6"
-        ))
-        layout.addWidget(_label("Instruction / Rules"))
+        self._banner_in = _info_banner(tr("instr.banner"), color="#F5E6FF", border="#9B59B6")
+        layout.addWidget(self._banner_in)
+        self._lbl_in_title = _label(tr("instr.form_title"))
+        layout.addWidget(self._lbl_in_title)
         layout.addWidget(_sep())
 
         fl = QFormLayout()
@@ -824,8 +904,8 @@ class InstructionPanel(BasePanel):
         self.f_apply.setPlaceholderText("np. **/*.ts  lub  ** (puste = brak applyTo)")
         self.f_apply.addItems([""] + self._APPLY_PRESETS)
         self.f_apply.setCurrentIndex(0)
-        fl.addRow("Nazwa:", self.f_name)
-        fl.addRow("applyTo:", self.f_apply)
+        self._flr_in_name  = _fl_row(fl, "instr.name",     self.f_name)
+        self._flr_in_apply = _fl_row(fl, "instr.apply_to", self.f_apply)
         layout.addLayout(fl)
         layout.addWidget(_sep())
 
@@ -834,10 +914,11 @@ class InstructionPanel(BasePanel):
 
         nav = QWidget(); nav.setMaximumWidth(210)
         nv = QVBoxLayout(nav); nv.setContentsMargins(0, 0, 4, 0); nv.setSpacing(4)
-        nv.addWidget(_label("Sekcje"))
+        self._lbl_in_sections = _label(tr("instr.sections"))
+        nv.addWidget(self._lbl_in_sections)
         self.f_sections = QListWidget()
         nv.addWidget(self.f_sections, 1)
-        self.btn_add_sec = QPushButton("＋ Dodaj sekcję…")
+        self.btn_add_sec = QPushButton(tr("instr.add_section"))
         self.btn_add_sec.clicked.connect(self._show_add_section_menu)
         nv.addWidget(self.btn_add_sec)
         inner.addWidget(nav)
@@ -926,6 +1007,17 @@ class InstructionPanel(BasePanel):
             "metadata": {"applyTo": apply_to} if apply_to else {},
         }
 
+    def retranslate_ui(self) -> None:
+        self.btn_new.setText(tr("btn.new"))
+        self.btn_del.setText(tr("btn.delete"))
+        self.btn_save.setText(tr("btn.save"))
+        self._lbl_in_title.setText(tr("instr.form_title"))
+        self._flr_in_name.setText(tr("instr.name") + ":")
+        self._flr_in_apply.setText(tr("instr.apply_to") + ":")
+        self._lbl_in_sections.setText(tr("instr.sections"))
+        self.btn_add_sec.setText(tr("instr.add_section"))
+        self._banner_in.setText(tr("instr.banner"))
+
 
 # ── Issue Row widget ─────────────────────────────────────────────────────────
 
@@ -995,20 +1087,17 @@ class ValidationPanel(QWidget):
 
         # ── compact top bar ───────────────────────────────────────────────────
         top = QHBoxLayout()
-        self.btn_refresh = QPushButton("\u21bb  Od\u015bwie\u017c")
+        self.btn_refresh = QPushButton(tr("valid.run"))
         self.btn_refresh.setFixedHeight(28)
         self.btn_refresh.setFixedWidth(110)
         self.btn_refresh.clicked.connect(self._refresh_agents)
         top.addWidget(self.btn_refresh)
 
-        hint = QLabel(
-            "Wybierz agenta, by zobaczy\u0107 jego problemy. "
-            "\U0001f534\u00a0b\u0142\u0105d\u2003\U0001f7e1\u00a0ostrze\u017cenie\u2003\U0001f7e2\u00a0OK"
-        )
-        hint.setStyleSheet("color:#777; font-size:11px;")
-        hint.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self._hint_lbl = QLabel(tr("valid.hint"))
+        self._hint_lbl.setStyleSheet("color:#777; font-size:11px;")
+        self._hint_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         top.addSpacing(8)
-        top.addWidget(hint)
+        top.addWidget(self._hint_lbl)
         top.addStretch()
 
         self.stats_label = QLabel()
@@ -1028,9 +1117,9 @@ class ValidationPanel(QWidget):
         lv = QVBoxLayout(left)
         lv.setContentsMargins(0, 2, 4, 0)
         lv.setSpacing(2)
-        agent_hdr = QLabel("<b>Agenci</b>")
-        agent_hdr.setStyleSheet("font-size:12px; padding:2px 0;")
-        lv.addWidget(agent_hdr)
+        self._agent_hdr = QLabel(f"<b>{tr('valid.agents_hdr')}</b>")
+        self._agent_hdr.setStyleSheet("font-size:12px; padding:2px 0;")
+        lv.addWidget(self._agent_hdr)
         self.agent_list = QListWidget()
         self.agent_list.setSpacing(1)
         self.agent_list.setStyleSheet(
@@ -1047,9 +1136,9 @@ class ValidationPanel(QWidget):
         rv = QVBoxLayout(right)
         rv.setContentsMargins(4, 2, 0, 0)
         rv.setSpacing(2)
-        issues_hdr = QLabel("<b>Problemy</b>")
-        issues_hdr.setStyleSheet("font-size:12px; padding:2px 0;")
-        rv.addWidget(issues_hdr)
+        self._issues_hdr = QLabel(f"<b>{tr('valid.issues_hdr')}</b>")
+        self._issues_hdr.setStyleSheet("font-size:12px; padding:2px 0;")
+        rv.addWidget(self._issues_hdr)
         self.issue_list = QListWidget()
         self.issue_list.setAlternatingRowColors(True)
         self.issue_list.setSpacing(2)
@@ -1083,7 +1172,7 @@ class ValidationPanel(QWidget):
         self.agent_list.clear()
 
         # "All" entry
-        all_item = QListWidgetItem("\U0001f50e  Wszystkie")
+        all_item = QListWidgetItem(tr("valid.all"))
         all_item.setData(Qt.ItemDataRole.UserRole, None)
         self.agent_list.addItem(all_item)
 
@@ -1202,7 +1291,7 @@ class ValidationPanel(QWidget):
         issues = self._collect_issues(agent_id=agent_id)
 
         if not issues:
-            item = QListWidgetItem("\u2705  Wszystko OK \u2014 brak problem\u00f3w.")
+            item = QListWidgetItem(tr("valid.ok"))
             item.setForeground(QColor("#27AE60"))
             self.issue_list.addItem(item)
         else:
@@ -1225,4 +1314,12 @@ class ValidationPanel(QWidget):
 
     # keep old public name working (used by main_window init flow)
     def run_checks(self) -> None:
+        self._refresh_agents()
+
+    def retranslate_ui(self) -> None:
+        self.btn_refresh.setText(tr("valid.run"))
+        self._hint_lbl.setText(tr("valid.hint"))
+        self._agent_hdr.setText(f"<b>{tr('valid.agents_hdr')}</b>")
+        self._issues_hdr.setText(f"<b>{tr('valid.issues_hdr')}</b>")
+        # Refresh the list so "All" text uses new language
         self._refresh_agents()

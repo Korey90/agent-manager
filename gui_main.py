@@ -8,7 +8,9 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt
 
+import gui.settings as settings
 import gui.state as state
+from gui.i18n import set_lang
 from gui.main_window import MainWindow
 
 
@@ -66,6 +68,17 @@ def main() -> None:
     app = QApplication(sys.argv)
     app.setApplicationName("Agent Manager")
     app.setStyleSheet(STYLESHEET)
+
+    # Load persisted settings and apply language
+    settings.load()
+    set_lang(settings.get("language", "pl"))
+
+    # Load saved API keys into os.environ
+    import os
+    from gui.settings_panel import _load_api_keys_file
+    for k, v in _load_api_keys_file().items():
+        if v and k not in os.environ:
+            os.environ[k] = v
 
     # Set default workspace from config
     from config import GITHUB_DIR

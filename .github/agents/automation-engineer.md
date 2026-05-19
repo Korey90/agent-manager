@@ -2,6 +2,8 @@
 
 **Role:** DevOps, Hooks & Automation Specialist
 
+**Model:** gpt-4-turbo
+
 **Responsibilities:**
 - Laravel Reverb & WebSockets
 - Queue system

@@ -2,7 +2,9 @@
 
 **Role:** Supreme coordinator and process leader of the entire development.
 
-**Description:** opis agenta tutaj
+**Description:** opis agenta tutaj.
+
+**Model:** gpt-5.4
 
 **Hard Rules:**
 - twarda zasada 1

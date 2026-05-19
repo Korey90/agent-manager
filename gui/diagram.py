@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
     QLabel, QListWidget, QListWidgetItem, QPushButton,
     QSplitter, QVBoxLayout, QWidget,
 )
+from gui.i18n import tr, lang_signals
 
 
 # ── Zoomable view ─────────────────────────────────────────────────────────────
@@ -417,6 +418,7 @@ class DiagramPanel(QWidget):
         self._mode = "deps"
         self._build_ui()
         self.refresh()
+        lang_signals().changed.connect(self.retranslate_ui)
 
     def _build_ui(self):
         root = QHBoxLayout(self)
@@ -473,20 +475,15 @@ class DiagramPanel(QWidget):
         rv.addLayout(tb)
 
         # Info banner
-        info = QLabel(
-            "<b>Diagram</b> wizualizuje powiązania agenta ze skillami i hookami. "
-            "<i>Zależności</i> — widok gwiazdowy (agent w centrum). "
-            "<i>Workflow</i> — przepływ: START → pre-hooki → agent → skille → post-hooki → END. "
-            "Kółko myszy = zoom &nbsp;·&nbsp; przeciągnij = przesunięcie."
-        )
-        info.setWordWrap(True)
-        info.setTextFormat(Qt.TextFormat.RichText)
-        info.setStyleSheet(
+        self._info_lbl = QLabel(tr("diagram.banner"))
+        self._info_lbl.setWordWrap(True)
+        self._info_lbl.setTextFormat(Qt.TextFormat.RichText)
+        self._info_lbl.setStyleSheet(
             "background:#E8F4FD; border-left:4px solid #6CB4E4;"
             " border-radius:3px; padding:5px 10px;"
             " color:#333; font-size:11px;"
         )
-        rv.addWidget(info)
+        rv.addWidget(self._info_lbl)
 
         # Inline legend
         leg = QHBoxLayout()
@@ -551,6 +548,11 @@ class DiagramPanel(QWidget):
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 4)
         root.addWidget(splitter)
+
+    # ── i18n ─────────────────────────────────────────────────────────────────
+
+    def retranslate_ui(self) -> None:
+        self._info_lbl.setText(tr("diagram.banner"))
 
     # ── data ─────────────────────────────────────────────────────────────────
 

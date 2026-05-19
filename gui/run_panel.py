@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QHBoxLayout, QLabel, QPlainTextEdit,
     QPushButton, QSplitter, QVBoxLayout, QWidget,
 )
+from gui.i18n import tr
 
 
 def _banner(text: str, color: str = "#F0F4FF", border: str = "#5B7FD9") -> QLabel:
@@ -61,16 +62,13 @@ class RunPanel(QWidget):
         v.setContentsMargins(8, 8, 8, 8)
         v.setSpacing(6)
 
-        v.addWidget(_banner(
-            "<b>Uruchamianie agenta</b> — wybierz agenta, wpisz zadanie i kliknij <b>Uruchom</b>. "
-            "Wywołanie przebiega przez <code>runtime/runner.py</code> (litellm). "
-            "Wymagany klucz API np. <code>OPENAI_API_KEY</code> lub <code>ANTHROPIC_API_KEY</code> "
-            "ustawiony jako zmienna środowiskowa.",
-        ))
+        self._banner = _banner(tr("run.banner"))
+        v.addWidget(self._banner)
 
         # ── agent selector ────────────────────────────────────────────────────
         top = QHBoxLayout()
-        top.addWidget(QLabel("Agent:"))
+        self._lbl_agent = QLabel(tr("run.agent_lbl"))
+        top.addWidget(self._lbl_agent)
         self.agent_combo = QComboBox()
         self.agent_combo.setMinimumWidth(220)
         top.addWidget(self.agent_combo)
@@ -95,14 +93,15 @@ class RunPanel(QWidget):
         iv = QVBoxLayout(input_w)
         iv.setContentsMargins(0, 0, 0, 0)
         iv.setSpacing(4)
-        iv.addWidget(QLabel("Zadanie / prompt:"))
+        self._lbl_task = QLabel(tr("run.task_lbl"))
+        iv.addWidget(self._lbl_task)
         self.input_edit = QPlainTextEdit()
-        self.input_edit.setPlaceholderText("Wpisz zadanie dla agenta…")
+        self.input_edit.setPlaceholderText(tr("run.input_ph"))
         self.input_edit.setMinimumHeight(90)
         iv.addWidget(self.input_edit)
 
         btn_row = QHBoxLayout()
-        self.run_btn = QPushButton("▶  Uruchom")
+        self.run_btn = QPushButton(tr("btn.run"))
         self.run_btn.setFixedHeight(32)
         self.run_btn.setStyleSheet(
             "QPushButton { background:#0063B1; color:white; border-radius:4px; padding:4px 20px; }"
@@ -110,7 +109,7 @@ class RunPanel(QWidget):
         )
         self.run_btn.clicked.connect(self._on_run)
 
-        self.cancel_btn = QPushButton("✕  Anuluj")
+        self.cancel_btn = QPushButton(tr("btn.stop"))
         self.cancel_btn.setFixedHeight(32)
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.clicked.connect(self._on_cancel)
@@ -126,9 +125,10 @@ class RunPanel(QWidget):
         ov.setContentsMargins(0, 0, 0, 0)
         ov.setSpacing(4)
         hdr = QHBoxLayout()
-        hdr.addWidget(QLabel("Wynik:"))
+        self._lbl_output = QLabel(tr("run.output_lbl"))
+        hdr.addWidget(self._lbl_output)
         hdr.addStretch()
-        self.copy_btn = QPushButton("Kopiuj")
+        self.copy_btn = QPushButton(tr("btn.copy"))
         self.copy_btn.setFixedHeight(24)
         self.copy_btn.clicked.connect(self._on_copy)
         hdr.addWidget(self.copy_btn)
@@ -136,7 +136,7 @@ class RunPanel(QWidget):
 
         self.output_edit = QPlainTextEdit()
         self.output_edit.setReadOnly(True)
-        self.output_edit.setPlaceholderText("Tutaj pojawi się odpowiedź agenta…")
+        self.output_edit.setPlaceholderText(tr("run.output_ph"))
         self.output_edit.setStyleSheet(
             "background:#FAFAFA; font-family:Consolas,monospace; font-size:12px;"
         )
@@ -169,6 +169,15 @@ class RunPanel(QWidget):
         self.cancel_btn.setEnabled(False)
         self._worker = None
 
+    def retranslate_ui(self) -> None:
+        self._lbl_agent.setText(tr("run.agent_lbl"))
+        self._lbl_task.setText(tr("run.task_lbl"))
+        self._lbl_output.setText(tr("run.output_lbl"))
+        self.run_btn.setText(tr("btn.run"))
+        self.cancel_btn.setText(tr("btn.stop"))
+        self.copy_btn.setText(tr("btn.copy"))
+        self._banner.setText(tr("run.banner"))
+
     # ── slots ─────────────────────────────────────────────────────────────────
 
     def _on_run(self) -> None:
@@ -196,6 +205,22 @@ class RunPanel(QWidget):
         self.cancel_btn.setEnabled(True)
         self._set_status("Uruchamianie…")
 
+        # Reload saved API keys into os.environ and litellm right before each run
+        import os
+        import litellm
+        from gui.settings_panel import _load_api_keys_file
+        _LITELLM_ATTRS: dict[str, str] = {
+            "OPENAI_API_KEY":    "openai_key",
+            "ANTHROPIC_API_KEY": "anthropic_key",
+            "GEMINI_API_KEY":    "gemini_key",
+        }
+        for k, v in _load_api_keys_file().items():
+            if v:
+                os.environ[k] = v
+                if k in _LITELLM_ATTRS:
+                    setattr(litellm, _LITELLM_ATTRS[k], v)
+
+        self._last_model = agent.model or "gpt-4o"
         self._worker = _RunWorker(agent, user_input, skills, hooks)
         self._worker.finished.connect(self._on_done)
         self._worker.errored.connect(self._on_error)
@@ -203,6 +228,9 @@ class RunPanel(QWidget):
 
     def _on_done(self, result) -> None:
         lines: list[str] = []
+        model_used = getattr(self, "_last_model", "?")
+        lines.append(f"[Model: {model_used}]")
+        lines.append("")
         if result.skill_calls:
             lines.append("=== Wywołania skilli ===")
             for sc in result.skill_calls:

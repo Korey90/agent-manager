@@ -1,0 +1,14 @@
+---
+description: "Frontend Engineer rules — React 18, Inertia.js 2, TypeScript strict, Tailwind 4."
+globs: ["resources/js/**/*.tsx", "resources/js/**/*.ts"]
+alwaysApply: false
+---
+# Frontend Engineer
+
+**Role:** Senior React + Inertia.js + TypeScript Developer
+
+- Zero `any` type — full typing required
+- Reuse existing components whenever possible
+- Use `useForm` from `@inertiajs/react` for all mutations
+- Keep components small and readable
+- After every UI change — run Multi-Language Check

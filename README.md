@@ -14,8 +14,16 @@ Desktopowy menedżer agentów AI z graficznym interfejsem (PyQt6). Pozwala defin
 | **📋 Instrukcje** | Ogólne zasady i reguły dla agentów |
 | **🗺 Diagram** | Wizualizacja połączeń agent → skill → hook |
 | **✅ Walidacja** | Przegląd problemów jakości (braki pól, martwe referencje) z nawigacją klik→panel |
-| **▶ Uruchom** | Uruchomienie agenta w tle (via litellm) z podglądem wyniku i skill calls |
+| **▶ Uruchom** | Uruchomienie agenta w tle (via litellm) z podglądem wyniku, skill calls i aktywnym modelem |
 | **📤 Eksport** | Generowanie pliku `AGENTS.md` lub reguł `.cursor/rules/*.mdc` |
+| **⚙ Ustawienia** | Język interfejsu, domyślny model, workspace, **zarządzanie kluczami API** (OpenAI / Anthropic / Gemini) |
+
+### Dodatkowe cechy
+
+- **Dwujęzyczny interfejs** — przełączanie PL/EN w locie (⚙ Ustawienia → Język)
+- **Klucze API w GUI** — brak potrzeby ręcznej edycji `.env`; klucze są zapisywane w `~/.agent-manager/api_keys.env` i ładowane przy każdym uruchomieniu
+- **Przycisk Zapisz zawsze widoczny** — poza obszarem przewijania, z potwierdzeniem ✔ Zapisano (zielony flash)
+- **Sanitizacja nazw narzędzi** — nazwy skilli ze spacjami lub znakami specjalnymi są automatycznie konwertowane do formatu wymaganego przez OpenAI API (`^[a-zA-Z0-9_-]+$`)
 
 ---
 
@@ -40,16 +48,20 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Skopiuj plik konfiguracji środowiska:
+### Klucze API
+
+Klucze API można ustawić na dwa sposoby:
+
+**Opcja A — przez GUI (zalecana):** Uruchom aplikację, przejdź do ⚙ **Ustawienia → Klucze API**, wpisz klucze i kliknij *Zapisz ustawienia*. Klucze są przechowywane w `~/.agent-manager/api_keys.env` i ładowane automatycznie przy każdym starcie.
+
+**Opcja B — plik `.env`:** Skopiuj i wypełnij plik środowiskowy:
 
 ```bash
 cp .env.example .env
 ```
 
-Wypełnij `.env`:
-
 ```env
-OPENAI_API_KEY=sk-...          # lub ANTHROPIC_API_KEY, itp.
+OPENAI_API_KEY=sk-...          # lub ANTHROPIC_API_KEY, GEMINI_API_KEY
 DEFAULT_MODEL=gpt-4o
 WORKSPACE_DIR=.                # katalog projektu zawierający .github/
 DATA_DIR=data

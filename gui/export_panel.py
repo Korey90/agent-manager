@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QHBoxLayout, QLabel, QMessageBox,
     QPlainTextEdit, QPushButton, QVBoxLayout, QWidget,
 )
+from gui.i18n import tr
 
 
 def _banner(text: str, color: str = "#F5F0FF", border: str = "#7C3AED") -> QLabel:
@@ -115,21 +116,21 @@ class ExportPanel(QWidget):
         v.setContentsMargins(8, 8, 8, 8)
         v.setSpacing(6)
 
-        v.addWidget(_banner(
-            "<b>Eksport</b> — wygeneruj pliki konfiguracyjne dla zewnętrznych narzędzi AI. "
-            "<b>AGENTS.md</b> to opis dla GitHub Copilot (główny folder projektu); "
-            "<b>Cursor</b> zapisuje <code>.cursor/rules/&lt;id&gt;.mdc</code> dla Cursor IDE. "
-            "Podgląd aktualizuje się na bieżąco po wyborze agenta i formatu.",
-        ))
+        self._banner = _banner(
+            tr("export.banner")
+        )
+        v.addWidget(self._banner)
 
         top = QHBoxLayout()
-        top.addWidget(QLabel("Agent:"))
+        self._lbl_agent = QLabel(tr("export.agent_lbl"))
+        top.addWidget(self._lbl_agent)
         self.agent_combo = QComboBox()
         self.agent_combo.setMinimumWidth(180)
         self.agent_combo.currentIndexChanged.connect(self._on_preview)
         top.addWidget(self.agent_combo)
 
-        top.addWidget(QLabel("Format:"))
+        self._lbl_fmt = QLabel(tr("export.fmt_lbl"))
+        top.addWidget(self._lbl_fmt)
         self.format_combo = QComboBox()
         self.format_combo.addItems(self._FORMATS)
         self.format_combo.currentIndexChanged.connect(self._on_preview)
@@ -151,7 +152,7 @@ class ExportPanel(QWidget):
         v.addWidget(self.preview_edit)
 
         btn_row = QHBoxLayout()
-        self.export_btn = QPushButton("💾  Eksportuj do pliku")
+        self.export_btn = QPushButton(tr("btn.export"))
         self.export_btn.setFixedHeight(32)
         self.export_btn.setStyleSheet(
             "QPushButton { background:#7C3AED; color:white; border-radius:4px; padding:4px 20px; }"
@@ -167,7 +168,7 @@ class ExportPanel(QWidget):
     def _refresh(self) -> None:
         self.agent_combo.blockSignals(True)
         self.agent_combo.clear()
-        self.agent_combo.addItem("Wszystkie agenty", userData=None)
+        self.agent_combo.addItem(tr("export.all"), userData=None)
         try:
             from gui.state import get_registry
             for agent in get_registry().agents.list():
@@ -248,3 +249,12 @@ class ExportPanel(QWidget):
             )
         except Exception as exc:
             QMessageBox.critical(self, "Błąd eksportu", str(exc))
+
+    def retranslate_ui(self) -> None:
+        self._lbl_agent.setText(tr("export.agent_lbl"))
+        self._lbl_fmt.setText(tr("export.fmt_lbl"))
+        self.export_btn.setText(tr("btn.export"))
+        # Refresh "all agents" item text in combo
+        if self.agent_combo.count() > 0:
+            self.agent_combo.setItemText(0, tr("export.all"))
+        self._banner.setText(tr("export.banner"))

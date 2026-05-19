@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -67,7 +68,7 @@ def run_agent(
         while reply.tool_calls:
             messages.append(reply)
             for tc in reply.tool_calls:
-                skill = next((s for s in skills if s.name == tc.function.name), None)
+                skill = next((s for s in skills if _sanitize_tool_name(s.name) == tc.function.name), None)
                 if skill is None:
                     tool_result = f"Skill '{tc.function.name}' not found."
                 else:
@@ -116,13 +117,19 @@ def run_agent(
     )
 
 
+def _sanitize_tool_name(name: str) -> str:
+    """Convert a skill name to a valid OpenAI function name (^[a-zA-Z0-9_-]+$)."""
+    sanitized = re.sub(r"[^a-zA-Z0-9_-]", "_", name).strip("_")
+    return sanitized or "skill"
+
+
 def _build_tools(skills: list[Skill]) -> list[dict[str, Any]]:
     tools = []
     for skill in skills:
         tools.append({
             "type": "function",
             "function": {
-                "name": skill.name,
+                "name": _sanitize_tool_name(skill.name),
                 "description": skill.description,
                 "parameters": skill.parameters or {"type": "object", "properties": {}},
             },

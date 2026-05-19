@@ -151,6 +151,8 @@ def render_agent(agent) -> str:
         parts.append(f"\n**Role:** {agent.role}\n")
     if agent.description:
         parts.append(f"\n**Description:** {agent.description}\n")
+    if getattr(agent, "model", ""):
+        parts.append(f"\n**Model:** {agent.model}\n")
     if agent.hard_rules:
         parts.append(_section("Hard Rules", agent.hard_rules))
     if agent.specialization:
@@ -253,6 +255,7 @@ def agent_from_markdown(md: str, slug: str) -> dict:
         "skill_ids": _list("Skills"),
         "hook_ids": _list("Hooks"),
         "instruction_ids": _list("Instructions"),
+        "model": _str("Model") or "gpt-4o",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
